@@ -1,0 +1,52 @@
+<div class="welcome-container">
+  <div class="header">
+    <h1>Welcome to Your Protected Page!</h1>
+    <p>You have successfully authenticated with AWS Cognito</p>
+  </div>
+  
+  @if (currentUser) {
+  <div class="user-info">
+    <div class="user-card">
+      <div class="avatar">
+        {{ (currentUser.email !== 'unknown' ? currentUser.email.charAt(0) : 'U') | uppercase }}
+      </div>
+      <div class="user-details">
+        <h3>{{ currentUser.name || 'Name not available' }}</h3>
+        <p class="email">{{ currentUser.email === 'unknown' ? 'Email not available' : currentUser.email }}</p>
+        <p class="user-id">ID: {{ currentUser.id }}</p>
+        <p class="token-expiry">Token expires at: {{ formatTokenExpiry(currentUser.tokenExpiry) }}</p>
+      </div>
+    </div>
+  </div>
+  } @else {
+  <div class="user-info">
+    <div class="user-card loading">
+      <div class="avatar loading-avatar">
+        <div class="loading-spinner"></div>
+      </div>
+      <div class="user-details">
+        <h3>Loading user information...</h3>
+        <p class="email">Please wait while we fetch your details</p>
+      </div>
+    </div>
+  </div>
+  }
+  
+  <div class="content">
+    <div class="info-section">
+      <h2>Authentication Details</h2>
+      <ul>
+        <li>✅ User authenticated successfully</li>
+        <li>✅ JWT tokens stored securely</li>
+        <li>✅ Route protected by AuthGuard</li>
+        <li>✅ Automatic token refresh enabled</li>
+      </ul>
+    </div>
+    
+    <div class="actions">
+      <button class="logout-btn" (click)="logout()">
+        Sign Out
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS Cognito Infrastructure for Angular Authentication Demo with AWS Amplify v6'
+
+Parameters:
+  UserPoolName:
+    Type: String
+    Default: 'angular-cognito-amplify-pool'
+    Description: 'Name for the Cognito User Pool'
+  
+  AppClientName:
+    Type: String
+    Default: 'angular-cognito-amplify-client'
+    Description: 'Name for the Cognito App Client'
+  
+  CognitoDomainPrefix:
+    Type: String
+    Default: 'angular-cognito-amplify-2025'
+    Description: 'Prefix for the Cognito hosted UI domain (must be unique across all AWS accounts)'
+    AllowedPattern: '^[a-z0-9-]{3,63}$'
+    ConstraintDescription: 'Domain prefix must be 3-63 characters, lowercase letters, numbers, and hyphens only'
+  
+  CallbackURLs:
+    Type: CommaDelimitedList
+    Default: 'http://localhost:4200/,https://yourdomain.com/'
+    Description: 'Callback URLs for OAuth flows (comma-separated)'
+  
+  LogoutURLs:
+    Type: CommaDelimitedList
+    Default: 'http://localhost:4200/,https://yourdomain.com/'
+    Description: 'Logout URLs for OAuth flows (comma-separated)'
+  
+  AllowedOAuthFlows:
+    Type: CommaDelimitedList
+    Default: 'code'
+    Description: 'Allowed OAuth flows (code, implicit)'
+  
+  AllowedOAuthScopes:
+    Type: CommaDelimitedList
+    Default: 'openid,email,profile'
+    Description: 'Allowed OAuth scopes'
+
+Resources:
+  # Cognito User Pool
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref UserPoolName
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: given_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: family_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      MfaConfiguration: 'OFF'
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      UserPoolTags:
+        Project: 'angular-cognito-amplify'
+        Environment: !Ref AWS::StackName
+
+  # Cognito User Pool Client
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Ref AppClientName
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      CallbackURLs: !Ref CallbackURLs
+      LogoutURLs: !Ref LogoutURLs
+      AllowedOAuthFlows: !Ref AllowedOAuthFlows
+      AllowedOAuthScopes: !Ref AllowedOAuthScopes
+      AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - COGNITO
+      PreventUserExistenceErrors: ENABLED
+
+  # Cognito User Pool Domain
+  # Note: Domain names must be globally unique across all AWS accounts and regions
+  # If deployment fails with "Invalid request", try a different domain prefix
+  # Cannot contain the reserved word "cognito"
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref CognitoUserPool
+      ManagedLoginVersion: 2 # This is required for the managed login branding to work
+
+  # Cognito Managed Login Branding Style
+  CognitoUserPoolManagedLoginBranding:
+    Type: AWS::Cognito::ManagedLoginBranding
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientId: !Ref CognitoUserPoolClient
+      UseCognitoProvidedValues: true
+     
+
+Outputs:
+  UserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+  
+  UserPoolClientId:
+    Description: 'Cognito User Pool Client ID'
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
+  
+  UserPoolDomain:
+    Description: 'Cognito User Pool Domain'
+    Value: !Sub '${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolDomain'
